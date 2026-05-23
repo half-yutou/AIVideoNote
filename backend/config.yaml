@@ -1,0 +1,14 @@
+# AIVideoNote 后端内部配置
+# 暴露给用户的配置请修改项目根目录的 .env 文件
+
+server:
+  port: 8080
+  host: "0.0.0.0"
+
+database:
+  file_path: "./data/aivideonote.db"
+
+task:
+  max_concurrent: 3
+  max_retry: 3
+  retry_delay: 30
