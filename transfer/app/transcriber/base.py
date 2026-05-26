@@ -25,7 +25,8 @@ class TranscriptResult:
 
 class BaseTranscriber(ABC):
     @abstractmethod
-    def transcribe(self, audio_path: str) -> TranscriptResult:
+    def transcribe(self, audio_path: str, language: Optional[str] = None) -> TranscriptResult:
+        """转录音频文件。language 为 None 时自动检测语言。"""
         pass
 
     @abstractmethod

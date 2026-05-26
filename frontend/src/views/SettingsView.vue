@@ -2,19 +2,18 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProviderStore } from '@/stores/provider'
+import { useToast } from '@/composables/useToast'
 import { getCookies, saveCookie, deleteCookie } from '@/api/cookie'
 import ProviderList from '@/components/provider/ProviderList.vue'
 import ProviderDialog from '@/components/provider/ProviderDialog.vue'
 
 const PLATFORM_LABELS: Record<string, string> = {
   bilibili: 'B站',
-  youtube: 'YouTube',
-  douyin: '抖音',
-  kuaishou: '快手',
 }
 
 const router = useRouter()
 const providerStore = useProviderStore()
+const toast = useToast()
 const showDialog = ref(false)
 const editingProvider = ref<LLMProviderData | null>(null)
 
@@ -53,15 +52,16 @@ async function handleSaveCookie() {
   const platform = editingCookie.value.platform
   const content = cookieContent.value.trim()
   if (!platform || !content) {
-    alert('请填写平台和 Cookie 内容')
+    toast.warning('请填写平台和 Cookie 内容')
     return
   }
   try {
     await saveCookie(platform, content)
     editingCookie.value = null
     await fetchCookies()
+    toast.success('Cookie 保存成功')
   } catch (e: any) {
-    alert('保存失败: ' + e.message)
+    toast.error('保存失败: ' + e.message)
   }
 }
 
@@ -70,8 +70,9 @@ async function handleDeleteCookie(platform: string) {
   try {
     await deleteCookie(platform)
     await fetchCookies()
+    toast.success('Cookie 已删除')
   } catch (e: any) {
-    alert('删除失败: ' + e.message)
+    toast.error('删除失败: ' + e.message)
   }
 }
 
@@ -93,14 +94,16 @@ async function handleSave(data: ProviderRequest | ProviderUpdateRequest) {
       await providerStore.addProvider(data as ProviderRequest)
     }
     showDialog.value = false
+    toast.success(editingProvider.value ? '提供商已更新' : '提供商已添加')
   } catch (e: any) {
-    alert(e.message)
+    toast.error(e.message)
   }
 }
 
 async function handleDelete(id: string) {
   if (!confirm('确定删除此提供商？')) return
   await providerStore.removeProvider(id)
+  toast.success('提供商已删除')
 }
 
 function goBack() {
@@ -111,14 +114,37 @@ function goBack() {
 <template>
   <div class="settings">
     <div class="settings-header">
-      <button class="back-btn" @click="goBack">← 返回</button>
-      <h2>设置</h2>
+      <button class="back-btn" @click="goBack">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+        </svg>
+        返回
+      </button>
+      <div class="settings-title-group">
+        <h2>设置</h2>
+        <span class="settings-subtitle">管理提供商和平台配置</span>
+      </div>
     </div>
 
-    <div class="section">
+    <!-- Cookie 配置 -->
+    <div class="section animate-fade-in-up">
       <div class="section-header">
-        <h3>平台 Cookie</h3>
-        <span class="section-hint">为各平台提供 Cookie 可避免 403 反爬拦截</span>
+        <div class="section-title-group">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"/>
+              <path d="M8.5 8.5v.01"/><path d="M16 15.5v.01"/><path d="M12 12v.01"/><path d="M11 17v.01"/><path d="M7 14v.01"/>
+            </svg>
+            平台 Cookie
+          </h3>
+          <span class="section-hint">为各平台提供 Cookie 可避免 403 反爬拦截</span>
+        </div>
+        <button class="add-btn" @click="handleAddCookie">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          添加
+        </button>
       </div>
 
       <div v-if="cookies.length > 0" class="cookie-list">
@@ -134,75 +160,103 @@ function goBack() {
         </div>
       </div>
       <div v-else class="cookie-empty">
-        暂无 Cookie 配置，添加后可避免部分平台的反爬拦截
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>暂无 Cookie 配置，添加后可避免部分平台的反爬拦截</span>
       </div>
 
-      <button class="add-btn" style="margin-top: 12px" @click="handleAddCookie">+ 添加 Cookie</button>
+      <Transition name="slide">
+        <div v-if="editingCookie" class="cookie-editor">
+          <div class="editor-field">
+            <label>平台</label>
+            <select v-model="editingCookie.platform" class="form-select">
+              <option value="">选择平台</option>
+              <option value="bilibili">B站</option>
+            </select>
+          </div>
 
-      <div v-if="editingCookie" class="cookie-editor">
-        <label>平台</label>
-        <select v-model="editingCookie.platform" class="select">
-          <option value="">选择平台</option>
-          <option value="bilibili">B站</option>
-          <option value="youtube">YouTube</option>
-          <option value="douyin">抖音</option>
-          <option value="kuaishou">快手</option>
-        </select>
+          <div class="editor-field">
+            <label>Cookie 格式</label>
+            <div class="format-tabs">
+              <button
+                type="button"
+                :class="['format-tab', { active: cookieFormat === 'header' }]"
+                @click="cookieFormat = 'header'"
+              >
+                请求头格式（推荐）
+              </button>
+              <button
+                type="button"
+                :class="['format-tab', { active: cookieFormat === 'netscape' }]"
+                @click="cookieFormat = 'netscape'"
+              >
+                Netscape 格式
+              </button>
+            </div>
+          </div>
 
-        <label>Cookie 格式</label>
-        <div class="format-tabs">
-          <button
-            type="button"
-            :class="['format-tab', { active: cookieFormat === 'header' }]"
-            @click="cookieFormat = 'header'"
-          >
-            请求头格式（推荐）
-          </button>
-          <button
-            type="button"
-            :class="['format-tab', { active: cookieFormat === 'netscape' }]"
-            @click="cookieFormat = 'netscape'"
-          >
-            Netscape 格式
-          </button>
-        </div>
+          <div class="editor-field">
+            <label v-if="cookieFormat === 'header'">粘贴请求头中的 Cookie 值</label>
+            <label v-else>粘贴 Netscape 格式 Cookie 文本</label>
+            <textarea
+              v-model="cookieContent"
+              class="cookie-textarea"
+              rows="5"
+              :placeholder="cookieFormat === 'header'
+                ? '打开 bilibili.com → F12 → Network → 复制 Cookie 值'
+                : 'Chrome 插件 Get cookies.txt LOCALLY 导出后粘贴'" />
+          </div>
 
-        <label v-if="cookieFormat === 'header'">粘贴请求头中的 Cookie 值</label>
-        <label v-else>粘贴 Netscape 格式 Cookie 文本</label>
-        <textarea
-          v-model="cookieContent"
-          class="cookie-textarea"
-          rows="6"
-          :placeholder="cookieFormat === 'header'
-            ? '打开任意 bilibili.com 页面 → F12 → Network → 点一个请求 → 找到 Request Headers → 复制 Cookie: 后面全部内容'
-            : 'Chrome 插件 Get cookies.txt LOCALLY 导出后粘贴内容'" />
-        <div class="cookie-actions">
-          <button class="action-btn primary" @click="handleSaveCookie">保存</button>
-          <button class="action-btn" @click="editingCookie = null">取消</button>
+          <div class="editor-actions">
+            <button class="action-btn primary" @click="handleSaveCookie">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              保存
+            </button>
+            <button class="action-btn" @click="editingCookie = null">取消</button>
+          </div>
+
+          <div class="cookie-help">
+            <template v-if="cookieFormat === 'header'">
+              <strong>如何获取：</strong>
+              <ol>
+                <li>浏览器打开 bilibili.com 并登录</li>
+                <li>按 <code>F12</code> → <code>Network</code> 标签</li>
+                <li>刷新页面，点击任意请求</li>
+                <li>在 Request Headers 中找到 <code>Cookie:</code> 一行</li>
+                <li>复制冒号后面的全部内容粘贴到这里</li>
+              </ol>
+            </template>
+            <template v-else>
+              <strong>获取方式：</strong>
+              <p>Chrome 插件 <code>Get cookies.txt LOCALLY</code> 导出后粘贴内容</p>
+            </template>
+          </div>
         </div>
-        <div v-if="cookieFormat === 'header'" class="cookie-help">
-          如何获取：
-          <ol>
-            <li>浏览器打开 bilibili.com 并登录</li>
-            <li>按 <code>F12</code> → <code>Network</code>（网络）标签</li>
-            <li>刷新页面，点击任意请求</li>
-            <li>在 <code>Request Headers</code> 中找到 <code>Cookie:</code> 一行</li>
-            <li>复制冒号后面的全部内容粘贴到这里</li>
-          </ol>
-        </div>
-        <div v-else class="cookie-help">
-          获取方式：
-          <ul>
-            <li>Chrome 插件: <code>Get cookies.txt LOCALLY</code> 导出</li>
-          </ul>
-        </div>
-      </div>
+      </Transition>
     </div>
 
-    <div class="section" style="margin-top: 24px">
+    <!-- LLM 提供商 -->
+    <div class="section animate-fade-in-up" style="animation-delay: 100ms">
       <div class="section-header">
-        <h3>LLM 模型提供商</h3>
-        <button class="add-btn" @click="handleAdd">+ 添加提供商</button>
+        <div class="section-title-group">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+            LLM 模型提供商
+          </h3>
+        </div>
+        <button class="add-btn" @click="handleAdd">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          添加提供商
+        </button>
       </div>
       <ProviderList
         :providers="providerStore.providers"
@@ -225,193 +279,300 @@ function goBack() {
 .settings {
   max-width: 800px;
   margin: 0 auto;
-  padding: 24px;
+  padding: var(--space-6);
 }
+
 .settings-header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-.back-btn {
-  padding: 6px 16px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 14px;
-}
-.back-btn:hover {
-  background: #f5f5f5;
-}
-h2 {
-  font-size: 22px;
-  font-weight: 600;
-}
-.section {
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-.section-header h3 {
-  font-size: 16px;
-  font-weight: 600;
-}
-.section-hint {
-  font-size: 12px;
-  color: #999;
-}
-.add-btn {
-  padding: 6px 16px;
-  border: 1px solid #4A90D9;
-  border-radius: 6px;
-  background: #4A90D9;
-  color: #fff;
-  cursor: pointer;
-  font-size: 14px;
-}
-.add-btn:hover {
-  background: #357ABD;
-}
-.select {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-  margin: 8px 0 12px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
 }
 
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  font-size: var(--text-base);
+  transition: all var(--transition-fast);
+}
+.back-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.settings-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-title-group h2 {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+.settings-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.section {
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+  margin-bottom: var(--space-5);
+}
+
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.section-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.section-title-group h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text);
+}
+.section-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+.add-btn:hover {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-select {
+  width: 100%;
+  padding: 10px 14px;
+  padding-right: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  background: var(--color-bg-elevated);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  transition: all var(--transition-fast);
+}
+.form-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+
+/* Cookie 列表 */
 .cookie-list {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 .cookie-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border-light);
+}
+.cookie-item:last-child {
+  border-bottom: none;
 }
 .cookie-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 .cookie-platform {
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--text-base);
+  color: var(--color-text);
 }
 .cookie-preview {
-  font-size: 12px;
-  color: #999;
-  font-family: monospace;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
 }
 .cookie-empty {
-  color: #999;
-  font-size: 13px;
-  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  padding: var(--space-3) 0;
 }
+
+/* Cookie 编辑器 */
 .cookie-editor {
-  margin-top: 16px;
-  padding: 16px;
-  background: #f9f9f9;
-  border-radius: 8px;
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-bg-muted);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
-.cookie-editor label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 4px;
+.editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
+.editor-field label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
 .format-tabs {
   display: flex;
   gap: 0;
-  margin-bottom: 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 .format-tab {
   flex: 1;
-  padding: 6px 0;
-  border: none;
-  background: #f5f5f5;
-  cursor: pointer;
-  font-size: 13px;
-  color: #666;
-  transition: background 0.2s;
+  padding: var(--space-2) 0;
+  background: var(--color-bg-elevated);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+  border-right: 1px solid var(--color-border);
 }
-.format-tab:first-child {
-  border-right: 1px solid #ddd;
+.format-tab:last-child {
+  border-right: none;
 }
 .format-tab.active {
-  background: #4A90D9;
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
 }
+
 .cookie-textarea {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-family: monospace;
-  font-size: 12px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
   resize: vertical;
   box-sizing: border-box;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  line-height: 1.5;
 }
+.cookie-textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+
+.editor-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .cookie-help {
-  margin-top: 12px;
-  font-size: 12px;
-  color: #666;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  padding: var(--space-3);
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-md);
 }
-.cookie-help ul {
-  margin: 4px 0 0 16px;
+.cookie-help strong {
+  color: var(--color-text-secondary);
+}
+.cookie-help ol, .cookie-help ul {
+  margin: var(--space-1) 0 0 var(--space-4);
   padding: 0;
 }
 .cookie-help code {
-  background: #eee;
-  padding: 1px 4px;
+  background: var(--color-bg-muted);
+  padding: 1px 5px;
   border-radius: 3px;
   font-size: 11px;
+  font-family: var(--font-mono);
 }
 
+/* 操作按钮 */
 .action-btn {
-  padding: 4px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 12px;
-  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
 }
 .action-btn:hover {
-  background: #f0f0f0;
+  background: var(--color-bg-muted);
+  border-color: var(--color-text-muted);
 }
 .action-btn.primary {
-  background: #4A90D9;
-  color: #fff;
-  border-color: #4A90D9;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-primary);
 }
 .action-btn.primary:hover {
-  background: #357ABD;
+  background: var(--color-primary-hover);
 }
 .action-btn.danger {
-  color: #e74c3c;
-  border-color: #e74c3c;
+  color: var(--color-danger);
+  border-color: var(--color-danger);
 }
 .action-btn.danger:hover {
-  background: #fdf0ef;
+  background: var(--color-danger-light);
 }
 .cookie-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-top: 8px;
+  gap: var(--space-2);
+}
+
+/* 过渡动画 */
+.slide-enter-active {
+  transition: all 300ms ease-out;
+}
+.slide-leave-active {
+  transition: all 200ms ease-in;
+}
+.slide-enter-from,
+.slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 </style>

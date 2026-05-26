@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.136.1",
     "faster-whisper>=1.2.1",
-    "nvidia-cublas-cu12>=12.9.2.10",
+    "nvidia-cublas-cu12>=12.9.2.10; sys_platform != 'darwin'",
     "python-dotenv>=1.2.2",
     "uvicorn>=0.47.0",
 ]

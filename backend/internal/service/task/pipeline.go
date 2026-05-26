@@ -77,6 +77,11 @@ func (p *Pipeline) Run(ctx context.Context, taskID string) {
 		return
 	}
 
+	// 无论成功或失败，local 平台上传的临时文件都需要清理
+	if task.Platform == "local" {
+		defer p.cleanupLocalUpload(task.VideoURL)
+	}
+
 	result, err := p.execute(ctx, task)
 	if err != nil {
 		if se, ok := err.(*stepError); ok {
@@ -128,20 +133,17 @@ func (p *Pipeline) runOnce(ctx context.Context, task *model.Task) (*NoteResult, 
 	if task.Platform != "local" {
 		ytPath := p.cfg.Tools.YtDlpPath
 		checkCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
 		if _, err := exec.CommandContext(checkCtx, ytPath, "--version").Output(); err != nil {
+			cancel()
 			return nil, &stepError{model.TaskStatusParsingFailed, "yt-dlp 不可用", fmt.Errorf("path=%s: %w — 请安装: pip install yt-dlp", ytPath, err)}
 		}
+		cancel()
 	}
-
-	needVideo := task.Screenshot || task.VideoUnderstanding
-	gridSize := parseGridSize(task.GridSize)
 
 	cookieFile := p.prepareCookies(task.Platform)
 	defer os.Remove(cookieFile)
 	if cookieFile != "" {
-		downloader.SetCookieFile(cookieFile)
-		defer downloader.SetCookieFile("")
+		downloader.SetCookieOption(dl, &downloader.CookieOption{FilePath: cookieFile})
 	}
 
 	p.updateStatus(task.ID, model.TaskStatusDownloading, "获取视频字幕...")
@@ -150,13 +152,13 @@ func (p *Pipeline) runOnce(ctx context.Context, task *model.Task) (*NoteResult, 
 		logger.L.Warnf("获取字幕失败: %v", err)
 	}
 
-	skipDownload := transcript != nil && !needVideo
+	skipDownload := transcript != nil
 
 	var audioMeta *downloader.AudioMeta
 	var workDir string
 
 	if !skipDownload {
-		audioMeta, err = dl.Download(ctx, task.VideoURL, task.Quality, dataDir, needVideo, false)
+		audioMeta, err = dl.Download(ctx, task.VideoURL, task.Quality, dataDir, false, false)
 		if err != nil {
 			return nil, &stepError{model.TaskStatusDownloadingFailed, "下载失败", err}
 		}
@@ -174,11 +176,6 @@ func (p *Pipeline) runOnce(ctx context.Context, task *model.Task) (*NoteResult, 
 	_ = p.taskRepo.UpdateVideoID(task.ID, audioMeta.VideoID)
 
 	p.updateStatus(task.ID, model.TaskStatusDownloading, "下载完成")
-
-	if needVideo && gridSize != nil && len(gridSize) == 2 {
-		p.updateStatus(task.ID, model.TaskStatusDownloading, "生成视频缩略图...")
-		p.generateThumbnails(ctx, workDir, task.ID, gridSize, task.VideoInterval)
-	}
 
 	if transcript == nil {
 		p.updateStatus(task.ID, model.TaskStatusTranscribing, "语音转录中...")
@@ -282,9 +279,22 @@ func (p *Pipeline) moveIntoWorkDir(meta *downloader.AudioMeta, workDir string) *
 	return meta
 }
 
-func (p *Pipeline) generateThumbnails(ctx context.Context, workDir, taskID string, gridSize []int, interval int) {
-	screenshotDir := filepath.Join(workDir, "screenshots")
-	os.MkdirAll(screenshotDir, 0755)
+func (p *Pipeline) cleanupLocalUpload(filePath string) {
+	if filePath == "" {
+		return
+	}
+	// 只清理 uploads 目录下的文件，避免误删用户本地文件
+	uploadDir, _ := filepath.Abs(p.cfg.Storage.UploadDir)
+	absFile, _ := filepath.Abs(filePath)
+	if uploadDir != "" && strings.HasPrefix(absFile, uploadDir) {
+		if err := os.Remove(absFile); err != nil {
+			if !os.IsNotExist(err) {
+				logger.L.Warnf("清理本地上传临时文件失败: %v (path=%s)", err, absFile)
+			}
+		} else {
+			logger.L.Infof("已清理本地上传临时文件: %s", absFile)
+		}
+	}
 }
 
 func (p *Pipeline) updateStatus(taskID string, status model.TaskStatus, msg string) {
@@ -333,17 +343,6 @@ type NoteResult struct {
 	NoteTitle  string
 }
 
-func parseGridSize(raw string) []int {
-	if raw == "" || raw == "[]" {
-		return nil
-	}
-	var result []int
-	if err := json.Unmarshal([]byte(raw), &result); err != nil {
-		return nil
-	}
-	return result
-}
-
 func (p *Pipeline) prepareCookies(platform string) string {
 	if p.cookieRepo == nil {
 		return ""
@@ -377,9 +376,6 @@ func (p *Pipeline) prepareCookies(platform string) string {
 
 var platformDomains = map[string]string{
 	"bilibili": ".bilibili.com",
-	"youtube":  ".youtube.com",
-	"douyin":   ".douyin.com",
-	"kuaishou": ".kuaishou.com",
 }
 
 func isHeaderCookieFormat(content string) bool {

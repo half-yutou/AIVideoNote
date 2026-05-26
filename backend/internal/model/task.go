@@ -5,29 +5,25 @@ import (
 )
 
 type Task struct {
-	ID                 string     `gorm:"primaryKey;type:varchar(36)" json:"id"`
-	VideoURL           string     `gorm:"not null" json:"video_url"`
-	Platform           string     `gorm:"not null;size:20" json:"platform"`
-	VideoID            string     `gorm:"size:100" json:"video_id"`
-	Status             string     `gorm:"not null;size:20;default:PENDING" json:"status"`
-	Quality            string     `gorm:"size:10;default:medium" json:"quality"`
-	ModelName          string     `gorm:"size:50" json:"model_name"`
-	ProviderID         string     `gorm:"size:36" json:"provider_id"`
-	Format             string     `gorm:"type:text;default:'[]'" json:"format"`
-	Style              string     `gorm:"size:50" json:"style"`
-	Extras             string     `gorm:"type:text" json:"extras"`
-	Name               string     `gorm:"size:200" json:"name"`
-	GroupID            string     `gorm:"size:36" json:"group_id"`
-	Screenshot         bool       `gorm:"default:false" json:"screenshot"`
-	Link               bool       `gorm:"default:false" json:"link"`
-	VideoUnderstanding bool       `gorm:"default:false" json:"video_understanding"`
-	VideoInterval      int        `gorm:"default:0" json:"video_interval"`
-	GridSize           string     `gorm:"type:text;default:'[]'" json:"grid_size"`
-	ErrorMessage       string     `gorm:"type:text" json:"error_message"`
-	RetryCount         int        `gorm:"default:0" json:"retry_count"`
-	CreatedAt          time.Time  `json:"created_at"`
-	UpdatedAt          time.Time  `json:"updated_at"`
-	CompletedAt        *time.Time `json:"completed_at"`
+	ID           string     `gorm:"primaryKey;type:varchar(36)" json:"id"`
+	VideoURL     string     `gorm:"not null" json:"video_url"`
+	Platform     string     `gorm:"not null;size:20" json:"platform"`
+	VideoID      string     `gorm:"size:100" json:"video_id"`
+	Status       string     `gorm:"not null;size:20;default:PENDING" json:"status"`
+	Quality      string     `gorm:"size:10;default:medium" json:"quality"`
+	ModelName    string     `gorm:"size:50" json:"model_name"`
+	ProviderID   string     `gorm:"size:36" json:"provider_id"`
+	Format       string     `gorm:"type:text;default:'[]'" json:"format"`
+	Style        string     `gorm:"size:50" json:"style"`
+	Extras       string     `gorm:"type:text" json:"extras"`
+	Name         string     `gorm:"size:200" json:"name"`
+	GroupID      string     `gorm:"size:36" json:"group_id"`
+	Link         bool       `gorm:"default:false" json:"link"`
+	ErrorMessage string     `gorm:"type:text" json:"error_message"`
+	RetryCount   int        `gorm:"default:0" json:"retry_count"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	CompletedAt  *time.Time `json:"completed_at"`
 }
 
 func (Task) TableName() string {

@@ -74,6 +74,7 @@ func Setup(r *gin.Engine, deps *Deps) {
 		api.GET("/chat/status", chatHandler.IndexStatus)
 
 		api.POST("/upload", uploadHandler.Upload)
+		api.GET("/upload/formats", uploadHandler.AllowedFormats)
 
 		api.GET("/export/:id", exportHandler.Export)
 	}

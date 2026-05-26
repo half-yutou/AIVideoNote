@@ -15,11 +15,7 @@ declare global {
     format?: string[]
     style?: string
     extras?: string
-    screenshot?: boolean
     link?: boolean
-    video_understanding?: boolean
-    video_interval?: number
-    grid_size?: number[]
   }
 
   interface GroupData {

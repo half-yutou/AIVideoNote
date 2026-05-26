@@ -36,9 +36,8 @@ func BuildVideoSummary(transcript string, metaTitle, metaDescription string, sty
 1. 使用 Markdown 格式
 2. 笔记内容的开头必须用 H1 标题（# 标题）的格式，为这篇笔记生成一个简洁的中文标题（15字以内），标题应概括视频核心主题
 3. 使用 H2（##）标记主要章节，H3（###）标记子章节
-4. 在关键位置可以插入 [screenshot:MM:SS] 标记来表示需要插入截图的时间点
-5. 在关键概念处可以插入 [link:MM:SS] 标记来建立原片跳转链接
-6. 提取关键数据和结论
+4. 在关键概念处可以插入 [link:MM:SS] 标记来建立原片跳转链接
+5. 提取关键数据和结论
 
 ` + titleSection + descSection + `
 

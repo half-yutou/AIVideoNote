@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -192,12 +193,23 @@ func (c *Client) ChatStream(ctx context.Context, baseURL, apiKey, model string, 
 			return
 		}
 
-		decoder := json.NewDecoder(resp.Body)
-		for {
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
 			select {
 			case <-ctx.Done():
 				return
 			default:
+			}
+
+			line := scanner.Text()
+
+			// SSE 格式: "data: {...}" 或 "data: [DONE]"
+			if !strings.HasPrefix(line, "data: ") {
+				continue
+			}
+			data := strings.TrimPrefix(line, "data: ")
+			if data == "[DONE]" {
+				return
 			}
 
 			var streamChunk struct {
@@ -208,17 +220,16 @@ func (c *Client) ChatStream(ctx context.Context, baseURL, apiKey, model string, 
 				} `json:"choices"`
 			}
 
-			if err := decoder.Decode(&streamChunk); err != nil {
-				if err == io.EOF {
-					return
-				}
-				errCh <- err
-				return
+			if err := json.Unmarshal([]byte(data), &streamChunk); err != nil {
+				continue // 跳过无法解析的行
 			}
 
 			if len(streamChunk.Choices) > 0 && streamChunk.Choices[0].Delta.Content != "" {
 				ch <- streamChunk.Choices[0].Delta.Content
 			}
+		}
+		if err := scanner.Err(); err != nil && err != io.EOF {
+			errCh <- err
 		}
 	}()
 

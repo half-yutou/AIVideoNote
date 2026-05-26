@@ -20,6 +20,7 @@ def get_transcriber():
 
 class TranscribeRequest(BaseModel):
     audio_path: str
+    language: str | None = None  # None 时自动检测语言
 
 
 class SegmentModel(BaseModel):
@@ -42,10 +43,10 @@ def health():
 
 @router.post("/transcribe", response_model=TranscribeResponse)
 def transcribe(req: TranscribeRequest):
-    logger.info(f"收到转录请求: audio_path={req.audio_path}")
+    logger.info(f"收到转录请求: audio_path={req.audio_path}, language={req.language or 'auto'}")
     try:
         t = get_transcriber()
-        result = t.transcribe(req.audio_path)
+        result = t.transcribe(req.audio_path, language=req.language)
         return TranscribeResponse(
             language=result.language,
             full_text=result.full_text,

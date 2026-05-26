@@ -7,14 +7,21 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/aivideonote/backend/internal/pkg/logger"
 )
 
-type BilibiliDownloader struct{}
+type BilibiliDownloader struct {
+	cookie *CookieOption
+}
 
 func NewBilibiliDownloader() *BilibiliDownloader {
 	return &BilibiliDownloader{}
+}
+
+func (d *BilibiliDownloader) SetCookie(opt *CookieOption) {
+	d.cookie = opt
 }
 
 func (d *BilibiliDownloader) Name() string { return "bilibili" }
@@ -98,7 +105,7 @@ func (d *BilibiliDownloader) runYtDlp(ctx context.Context, args []string, output
 	cmdArgs := append([]string{
 		"--referer", "https://www.bilibili.com",
 	}, args...)
-	cmdArgs = append(cmdArgs, cookieArgs()...)
+	cmdArgs = append(cmdArgs, cookieArgsFrom(d.cookie)...)
 
 	logger.L.Infof("yt-dlp %s", cmdArgs)
 	cmd := exec.CommandContext(ctx, ytDlpPath(), cmdArgs...)
@@ -116,11 +123,10 @@ func (d *BilibiliDownloader) runYtDlp(ctx context.Context, args []string, output
 }
 
 func parseYtDlpOutput(output []byte, outputDir string) (*AudioMeta, error) {
-	lines := splitJSONLines(output)
+	lines := strings.Split(string(output), "\n")
 	var lastJSON string
 	for i := len(lines) - 1; i >= 0; i-- {
-		line := lines[i]
-		trimmed := line
+		trimmed := strings.TrimSpace(lines[i])
 		if len(trimmed) > 0 && trimmed[0] == '{' {
 			lastJSON = trimmed
 			break
@@ -150,25 +156,6 @@ func parseYtDlpOutput(output []byte, outputDir string) (*AudioMeta, error) {
 		FilePath: filepath.Join(outputDir, info.ID+".mp3"),
 		RawInfo:  lastJSON,
 	}, nil
-}
-
-func splitJSONLines(output []byte) []string {
-	var lines []string
-	current := ""
-	for _, b := range output {
-		if b == '\n' || b == '\r' {
-			if current != "" {
-				lines = append(lines, current)
-				current = ""
-			}
-		} else {
-			current += string(b)
-		}
-	}
-	if current != "" {
-		lines = append(lines, current)
-	}
-	return lines
 }
 
 func qualityToABR(quality string) string {

@@ -26,6 +26,7 @@ beam_size 说明:
 import logging
 import os
 from pathlib import Path
+from typing import Optional
 
 from faster_whisper import WhisperModel
 
@@ -62,18 +63,19 @@ class WhisperTranscriber(BaseTranscriber):
             )
         return self._model
 
-    def transcribe(self, audio_path: str) -> TranscriptResult:
+    def transcribe(self, audio_path: str, language: Optional[str] = None) -> TranscriptResult:
         path = Path(audio_path)
         if not path.exists():
             raise FileNotFoundError(f"音频文件不存在: {audio_path}")
 
-        logger.info(f"开始转录: {audio_path} (GPU)")
+        logger.info(f"开始转录: {audio_path} (GPU), language={language or 'auto'}")
         model = self._get_model()
 
         beam_size = int(os.getenv("WHISPER_BEAM_SIZE", "1"))
         # beam_size=1 贪心搜索：每步只取概率最高的候选，速度快且中文日常对话精度足够
         # 与 beam_size=5 相比质量差异极小，但速度差几倍，因此默认 1
-        segments_raw, info = model.transcribe(str(path), beam_size=beam_size, language="zh")
+        # language=None 时 whisper 自动检测语言
+        segments_raw, info = model.transcribe(str(path), beam_size=beam_size, language=language)
 
         segments = []
         full_text_parts = []

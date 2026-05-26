@@ -2,10 +2,11 @@ package repository
 
 import (
 	"strings"
+	"time"
 
-	"github.com/google/uuid"
 	"github.com/aivideonote/backend/internal/database"
 	"github.com/aivideonote/backend/internal/model"
+	"github.com/google/uuid"
 )
 
 type TaskRepository struct{}
@@ -54,7 +55,8 @@ func (r *TaskRepository) UpdateStatus(id string, status model.TaskStatus, errMsg
 		updates["error_message"] = errMsg
 	}
 	if status == model.TaskStatusSuccess || status == model.TaskStatusFailed || strings.HasSuffix(string(status), "_FAILED") {
-		updates["completed_at"] = database.DB.Raw("NOW()")
+		now := time.Now()
+		updates["completed_at"] = &now
 	}
 	return database.DB.Model(&model.Task{}).Where("id = ?", id).Updates(updates).Error
 }

@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"fmt"
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,20 +22,16 @@ func NewTaskHandler(svc *task.Service, executor *task.Executor) *TaskHandler {
 }
 
 type generateRequest struct {
-	VideoURL           string   `json:"video_url" binding:"required"`
-	Platform           string   `json:"platform" binding:"required"`
-	Quality            string   `json:"quality"`
-	ModelName          string   `json:"model_name" binding:"required"`
-	ProviderID         string   `json:"provider_id" binding:"required"`
-	GroupID            string   `json:"group_id"`
-	Format             []string `json:"format"`
-	Style              string   `json:"style"`
-	Extras             string   `json:"extras"`
-	Screenshot         bool     `json:"screenshot"`
-	Link               bool     `json:"link"`
-	VideoUnderstanding bool     `json:"video_understanding"`
-	VideoInterval      int      `json:"video_interval"`
-	GridSize           []int    `json:"grid_size"`
+	VideoURL   string   `json:"video_url" binding:"required"`
+	Platform   string   `json:"platform" binding:"required"`
+	Quality    string   `json:"quality"`
+	ModelName  string   `json:"model_name" binding:"required"`
+	ProviderID string   `json:"provider_id" binding:"required"`
+	GroupID    string   `json:"group_id"`
+	Format     []string `json:"format"`
+	Style      string   `json:"style"`
+	Extras     string   `json:"extras"`
+	Link       bool     `json:"link"`
 }
 
 func (h *TaskHandler) Generate(c *gin.Context) {
@@ -53,21 +49,17 @@ func (h *TaskHandler) Generate(c *gin.Context) {
 	}
 
 	t := &model.Task{
-		ID:                 uuid.New().String(),
-		VideoURL:           req.VideoURL,
-		Platform:           req.Platform,
-		Quality:            req.Quality,
-		ModelName:          req.ModelName,
-		ProviderID:         req.ProviderID,
-		GroupID:            req.GroupID,
-		Format:             marshalStrSlice(req.Format),
-		Style:              req.Style,
-		Extras:             req.Extras,
-		Screenshot:         req.Screenshot,
-		Link:               req.Link,
-		VideoUnderstanding: req.VideoUnderstanding,
-		VideoInterval:      req.VideoInterval,
-		GridSize:           marshalIntSlice(req.GridSize),
+		ID:         uuid.New().String(),
+		VideoURL:   req.VideoURL,
+		Platform:   req.Platform,
+		Quality:    req.Quality,
+		ModelName:  req.ModelName,
+		ProviderID: req.ProviderID,
+		GroupID:    req.GroupID,
+		Format:     marshalStrSlice(req.Format),
+		Style:      req.Style,
+		Extras:     req.Extras,
+		Link:       req.Link,
 	}
 
 	if err := h.svc.Create(t); err != nil {
@@ -197,28 +189,9 @@ func marshalStrSlice(s []string) string {
 	if len(s) == 0 {
 		return "[]"
 	}
-	out := "["
-	for i, v := range s {
-		if i > 0 {
-			out += ","
-		}
-		out += fmt.Sprintf("\"%s\"", v)
-	}
-	out += "]"
-	return out
-}
-
-func marshalIntSlice(s []int) string {
-	if len(s) == 0 {
+	b, err := json.Marshal(s)
+	if err != nil {
 		return "[]"
 	}
-	out := "["
-	for i, v := range s {
-		if i > 0 {
-			out += ","
-		}
-		out += fmt.Sprintf("%d", v)
-	}
-	out += "]"
-	return out
+	return string(b)
 }
