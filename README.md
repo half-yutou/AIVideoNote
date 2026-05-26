@@ -2,14 +2,14 @@
 
 AI 视频笔记生成工具 — 输入视频链接，自动下载音频、语音转文字、AI 生成结构化 Markdown 笔记。
 
-## 技术栈
+## 服务架构
 
-| 层级     | 技术                                | 默认端口 |
-| ------ | --------------------------------- | ---- |
-| 前端     | Vue 3 + Vite + TypeScript + Pinia | 3015 |
-| 后端     | Go (Gin + GORM + Viper + Zap)     | 8080 |
-| 转录服务 | Python (FastAPI + faster-whisper) | 9090 |
-| 数据库    | SQLite (WAL 模式)                   | —    |
+| 服务     | 默认端口 |
+| ------   | ---- |
+| 前端     | 3015 |
+| 后端     | 8080 |
+| 转录服务 | 9090 |
+| 数据库   | (sqlite) |
 
 ## 快速开始
 
@@ -20,7 +20,9 @@ AI 视频笔记生成工具 — 输入视频链接，自动下载音频、语音
 - Python 3.11+（推荐使用 [uv](https://docs.astral.sh/uv/) 管理）
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp)（视频下载）
 - [ffmpeg](https://ffmpeg.org/)（音频处理）
-- NVIDIA GPU + CUDA 12.x（用于 GPU 加速转录，否则会退化为 CPU 版本，速度会慢很多）
+- whisper
+    - win/linux: NVIDIA GPU + CUDA 12.x（用于 GPU 加速转录，否则会退化为 CPU 版本，速度会慢很多）
+    - macOS: 使用mlx-whisper
 
 ### 安装与运行
 
@@ -57,9 +59,9 @@ npm run dev
 | `BACKEND_PORT` | Go 后端端口 | `8080` |
 | `TRANSCRIBER_PORT` | Python 转录服务端口 | `9090` |
 | `FRONTEND_PORT` | Vue 前端开发端口 | `3015` |
-| `FFMPEG_PATH` | ffmpeg 路径 | `ffmpeg` |
-| `FFPROBE_PATH` | ffprobe 路径 | `ffprobe` |
-| `YT_DLP_PATH` | yt-dlp 路径 | `yt-dlp` |
+| `FFMPEG_PATH` | ffmpeg工具 路径 | `ffmpeg` |
+| `FFPROBE_PATH` | ffprobe工具 路径 | `ffprobe` |
+| `YT_DLP_PATH` | yt-dlp工具 路径 | `yt-dlp` |
 | `TRANSCRIBE_TIMEOUT` | 转录超时（秒） | `600` |
 | `WHISPER_MODEL` | Whisper 模型大小 | `base` |
 | `WHISPER_DEVICE` | 推理设备 | `auto` |
@@ -89,6 +91,6 @@ AIVideoNote/
 
 - [后端架构](backend/README.md)
 - [前端架构](frontend/README.md)
-- [GPU 服务架构](transfer/README.md)
-- [详细文档](Docs/)
+- [转录服务架构](transfer/README.md)
+- 其他文档: 见`docs`目录
 

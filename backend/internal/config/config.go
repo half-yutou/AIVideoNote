@@ -132,13 +132,13 @@ func (c *Config) ensureDefaults() {
 		c.PythonService.TranscribeTimeout = 600
 	}
 	if c.Database.FilePath == "" {
-		c.Database.FilePath = "./data/aivideonote.db"
+		c.Database.FilePath = "./sqlite-data/aivideonote.db"
 	}
 	if c.Storage.DataDir == "" {
-		c.Storage.DataDir = "./data"
+		c.Storage.DataDir = "../data"
 	}
 	if c.Storage.UploadDir == "" {
-		c.Storage.UploadDir = "./data/uploads"
+		c.Storage.UploadDir = "../data/uploads"
 	}
 	if c.LLM.DefaultBaseURL == "" {
 		c.LLM.DefaultBaseURL = "https://api.openai.com/v1"
@@ -193,7 +193,10 @@ func (c *Config) applyEnvSections() {
 }
 
 func (c *Config) ensureDirs() error {
+	// 确保数据库目录存在
+	dbDir := filepath.Dir(c.Database.FilePath)
 	dirs := []string{
+		dbDir,
 		c.Storage.DataDir,
 		c.Storage.UploadDir,
 	}

@@ -1,4 +1,4 @@
-# AIVideoNote 后端内部配置
+# AIVideoNote 后端内部配置，优先级低于 .env 文件
 # 暴露给用户的配置请修改项目根目录的 .env 文件
 
 server:
@@ -6,7 +6,7 @@ server:
   host: "0.0.0.0"
 
 database:
-  file_path: "./data/aivideonote.db"
+  file_path: "./sqlite-data/aivideonote.db"
 
 task:
   max_concurrent: 3

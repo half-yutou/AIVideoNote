@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/aivideonote/backend/internal/config"
 	"github.com/aivideonote/backend/internal/database"
 	"github.com/aivideonote/backend/internal/middleware"
@@ -25,6 +24,7 @@ import (
 	provsvc "github.com/aivideonote/backend/internal/service/provider"
 	"github.com/aivideonote/backend/internal/service/task"
 	"github.com/aivideonote/backend/internal/service/transcriber"
+	"github.com/gin-gonic/gin"
 )
 
 type repos struct {
@@ -94,6 +94,7 @@ func loadConfig(path string) *config.Config {
 	}
 	logger.L.Infof("配置加载成功")
 	logger.L.Infof("  server: %s:%d", cfg.Server.Host, cfg.Server.Port)
+	logger.L.Infof("  数据目录: %s", cfg.Storage.DataDir)
 	logger.L.Infof("  上传目录: %s", cfg.Storage.UploadDir)
 	logger.L.Infof("  ffmpeg: %s", cfg.Tools.FfmpegPath)
 	return cfg
